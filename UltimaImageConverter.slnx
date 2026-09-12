@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="UltimaImageConverter.Cli/UltimaImageConverter.Cli.csproj" />
+  <Project Path="UltimaImageConverter.Core/UltimaImageConverter.Core.csproj" />
+</Solution>
