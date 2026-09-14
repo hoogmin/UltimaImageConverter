@@ -5,6 +5,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+	<ApplicationIcon>..\uic_icon.ico</ApplicationIcon>
+	<Authors>Javier Martinez</Authors>
+	<Product>Ultima Image Converter</Product>
+	<Description>Free, Open-Source, and Private Image Conversion Tool</Description>
+	<Title>Ultima Image Converter CLI</Title>
+	<PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+	<PackageId>UltimaImageConverter CLI</PackageId>
   </PropertyGroup>
 
   <ItemGroup>

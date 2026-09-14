@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="UltimaImageConverter.Cli/UltimaImageConverter.Cli.csproj" />
   <Project Path="UltimaImageConverter.Core/UltimaImageConverter.Core.csproj" />
+  <Project Path="UltimaImageConverter.Wpf/UltimaImageConverter.Wpf.csproj" Id="920275a7-5efe-45d2-b273-b853e7cb9ecf" />
 </Solution>
