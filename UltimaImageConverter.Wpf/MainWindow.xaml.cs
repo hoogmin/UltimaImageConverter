@@ -1,20 +1,45 @@
 ﻿using Microsoft.Win32;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
 using UltimaImageConverter.Core;
 
 namespace UltimaImageConverter.Wpf;
 
+// Our immutable data model for the UI
+public record ImageFile(string FullPath, string FileName);
+
 public partial class MainWindow : Window
 {
-    private List<string> _filesToProcess = new();
+    private readonly ObservableCollection<ImageFile> _filesToProcess = new();
     private readonly IImageConverter _converter;
     private CancellationTokenSource? _cts;
+    private string? _customOutputDirectory = null;
 
     public MainWindow()
     {
         InitializeComponent();
         _converter = new MagickImageConverter();
+
+        // Bind the list to the UI
+        LstFiles.ItemsSource = _filesToProcess;
+
+        // Auto-update the UI whenever the list changes
+        _filesToProcess.CollectionChanged += (s, e) => UpdateUIState();
+    }
+
+    private void UpdateUIState(bool preserveStatus = false)
+    {
+        bool hasFiles = _filesToProcess.Count > 0;
+        FileCountText.Visibility = hasFiles ? Visibility.Collapsed : Visibility.Visible;
+        BtnConvert.IsEnabled = hasFiles && _cts == null;
+
+        if (!preserveStatus)
+        {
+            StatusText.Text = hasFiles ? $"{_filesToProcess.Count} file(s) ready to convert." : "Ready";
+        }
     }
 
     private void Window_Drop(object sender, DragEventArgs e)
@@ -24,6 +49,32 @@ public partial class MainWindow : Window
             var droppedItems = (string[])e.Data.GetData(DataFormats.FileDrop);
             LoadFiles(droppedItems);
         }
+    }
+
+    private void BtnBrowseOutput_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Select Output Directory"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            _customOutputDirectory = dialog.FolderName;
+            TxtOutputDir.Text = _customOutputDirectory;
+            TxtOutputDir.Foreground = Brushes.White;
+            BtnResetOutput.IsEnabled = true;
+        }
+    }
+
+    private void BtnResetOutput_Click(object sender, RoutedEventArgs e)
+    {
+        _customOutputDirectory = null;
+        TxtOutputDir.Text = "Same as input directory";
+
+        // Revert to the original gray color
+        TxtOutputDir.Foreground = new SolidColorBrush(Color.FromRgb(136, 136, 136));
+        BtnResetOutput.IsEnabled = false;
     }
 
     private void BtnBrowse_Click(object sender, RoutedEventArgs e)
@@ -47,34 +98,63 @@ public partial class MainWindow : Window
             ".heic", ".heif", ".avif", ".webp", ".jpg", ".jpeg", ".png", ".tiff", ".bmp"
         };
 
-        _filesToProcess.Clear();
-
         foreach (var path in paths)
         {
             if (Directory.Exists(path))
             {
-                _filesToProcess.AddRange(Directory.GetFiles(path).Where(f => validExtensions.Contains(Path.GetExtension(f))));
+                var files = Directory.GetFiles(path).Where(f => validExtensions.Contains(Path.GetExtension(f)));
+                foreach (var f in files)
+                {
+                    // Prevent duplicates
+                    if (!_filesToProcess.Any(x => x.FullPath.Equals(f, StringComparison.OrdinalIgnoreCase)))
+                        _filesToProcess.Add(new ImageFile(f, Path.GetFileName(f)));
+                }
             }
             else if (File.Exists(path) && validExtensions.Contains(Path.GetExtension(path)))
             {
-                _filesToProcess.Add(path);
+                if (!_filesToProcess.Any(x => x.FullPath.Equals(path, StringComparison.OrdinalIgnoreCase)))
+                    _filesToProcess.Add(new ImageFile(path, Path.GetFileName(path)));
             }
         }
-
-        FileCountText.Text = _filesToProcess.Count > 0
-            ? $"{_filesToProcess.Count} file(s) ready to convert."
-            : "No supported images found.";
-
-        BtnConvert.IsEnabled = _filesToProcess.Count > 0;
-        ProgressBar.Value = 0;
-        StatusText.Text = "Ready";
     }
+
+    // --- Deletion Logic ---
+
+    private void BtnClear_Click(object sender, RoutedEventArgs e)
+    {
+        _filesToProcess.Clear();
+        ProgressBar.Value = 0;
+    }
+
+    private void MenuRemoveSelected_Click(object sender, RoutedEventArgs e)
+    {
+        RemoveSelectedItems();
+    }
+
+    private void LstFiles_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Delete || e.Key == Key.Back)
+        {
+            RemoveSelectedItems();
+        }
+    }
+
+    private void RemoveSelectedItems()
+    {
+        // Copy to list first to avoid modifying the collection while iterating
+        var selected = LstFiles.SelectedItems.Cast<ImageFile>().ToList();
+        foreach (var item in selected)
+        {
+            _filesToProcess.Remove(item);
+        }
+    }
+
+    // --- Conversion Logic ---
 
     private async void BtnConvert_Click(object sender, RoutedEventArgs e)
     {
         if (_filesToProcess.Count == 0) return;
 
-        // Handle Cancellation (Turning the Convert button into a Cancel button)
         if (_cts is not null)
         {
             _cts.Cancel();
@@ -82,8 +162,6 @@ public partial class MainWindow : Window
         }
 
         _cts = new CancellationTokenSource();
-
-        // Parse the selected format from the ComboBox
         var formatString = ((System.Windows.Controls.ComboBoxItem)CmbFormat.SelectedItem).Content.ToString();
         var targetFormat = Enum.Parse<OutputFormat>(formatString!);
         var options = new ConversionOptions(targetFormat, Quality: (int)SldQuality.Value);
@@ -95,14 +173,26 @@ public partial class MainWindow : Window
 
         try
         {
+            // Lock the list UI while converting
+            LstFiles.IsEnabled = false;
+            BtnBrowse.IsEnabled = false;
+            BtnClear.IsEnabled = false;
+            BtnBrowseOutput.IsEnabled = false;
+            BtnResetOutput.IsEnabled = false;
+
             for (int i = 0; i < _filesToProcess.Count; i++)
             {
                 if (_cts.Token.IsCancellationRequested) break;
 
-                var file = _filesToProcess[i];
-                var outputFilename = Path.ChangeExtension(file, targetFormat.ToString().ToLowerInvariant());
+                // Access the FullPath from our record
+                var file = _filesToProcess[i].FullPath;
+                var targetDir = _customOutputDirectory ?? Path.GetDirectoryName(file)!;
 
-                StatusText.Text = $"Converting: {Path.GetFileName(file)}...";
+                // Construct the final output path
+                var newFileName = Path.ChangeExtension(Path.GetFileName(file), targetFormat.ToString().ToLowerInvariant());
+                var outputFilename = Path.Combine(targetDir, newFileName);
+
+                StatusText.Text = $"Converting: {_filesToProcess[i].FileName}...";
 
                 var success = await _converter.ConvertAsync(file, outputFilename, options, _cts.Token);
                 if (success) successCount += 1;
@@ -119,33 +209,27 @@ public partial class MainWindow : Window
             _cts.Dispose();
             _cts = null;
             BtnConvert.Content = "Convert";
-            BtnConvert.IsEnabled = false;
-            _filesToProcess.Clear();
+
+            // Re-enable UI
+            LstFiles.IsEnabled = true;
+            BtnBrowse.IsEnabled = true;
+            BtnClear.IsEnabled = true;
+            BtnBrowseOutput.IsEnabled = true;
+            BtnResetOutput.IsEnabled = _customOutputDirectory is not null;
+
+            // Re-evaluate button states, but leave the Done/Aborted message visible
+            UpdateUIState(preserveStatus: true);
         }
     }
 
-    // --- Menu Event Handlers ---
+    // --- Menu Actions ---
 
-    private void MenuOpen_Click(object sender, RoutedEventArgs e)
-    {
-        BtnBrowse_Click(sender, e);
-    }
-
-    private void MenuExit_Click(object sender, RoutedEventArgs e)
-    {
-        Application.Current.Shutdown();
-    }
-
+    private void MenuOpen_Click(object sender, RoutedEventArgs e) => BtnBrowse_Click(sender, e);
+    private void MenuExit_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
     private void MenuAbout_Click(object sender, RoutedEventArgs e)
     {
         MessageBox.Show(
-            "Ultimate Image Converter (UIC)\n" +
-            "Version 1.0.0\n\n" +
-            "Author: Javier Martinez\n" +
-            "License: BSD-3-Clause\n\n" +
-            "An open-source tool built to quickly batch convert image formats including HEIC, AVIF, WebP, and more.",
-            "About uic",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+            "Ultima Image Converter (UIC)\nVersion 1.0.0\n\nAuthor: Javier Martinez\nLicense: BSD-3-Clause",
+            "About uic", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

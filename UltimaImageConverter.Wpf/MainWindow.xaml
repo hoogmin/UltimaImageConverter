@@ -4,7 +4,6 @@
         Title="Ultima Image Converter" Height="480" Width="600"
         WindowStartupLocation="CenterScreen"
         Background="#1E1E1E"
-        Icon="/uic_icon.ico"
         AllowDrop="True" Drop="Window_Drop">
 
     <Window.Resources>
@@ -19,6 +18,11 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#E1E1E1"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
         <Style TargetType="Menu">
             <Setter Property="Background" Value="#2D2D30"/>
             <Setter Property="Foreground" Value="#E1E1E1"/>
@@ -31,15 +35,11 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- Menu Bar -->
             <RowDefinition Height="Auto"/>
-            <!-- Top Buttons -->
             <RowDefinition Height="*"/>
-            <!-- File List / Drop Zone -->
             <RowDefinition Height="Auto"/>
-            <!-- Settings -->
             <RowDefinition Height="Auto"/>
-            <!-- Action Bar -->
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Menu Bar -->
@@ -57,18 +57,45 @@
         <!-- Top Controls -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="15,10,15,10">
             <Button x:Name="BtnBrowse" Content="Add Images" Width="100" Height="30" Click="BtnBrowse_Click"/>
+            <Button x:Name="BtnClear" Content="Clear All" Width="80" Height="30" Margin="10,0,0,0" Click="BtnClear_Click"/>
         </StackPanel>
 
-        <!-- Drop Zone -->
+        <!-- Drop Zone & File List -->
         <Grid Grid.Row="2" Margin="15,0,15,15" Background="Transparent">
             <Rectangle Stroke="#555555" StrokeThickness="2" StrokeDashArray="4 4" RadiusX="5" RadiusY="5" />
+
+            <ListBox x:Name="LstFiles" Margin="2" SelectionMode="Extended" 
+                     DisplayMemberPath="FileName" KeyDown="LstFiles_KeyDown">
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Remove Selected" Click="MenuRemoveSelected_Click"/>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+            </ListBox>
+
             <TextBlock x:Name="FileCountText" Text="Drag &amp; drop image files here" 
                        HorizontalAlignment="Center" VerticalAlignment="Center" 
                        Foreground="#888888" FontSize="16" IsHitTestVisible="False"/>
         </Grid>
 
+        <!-- Output Directory (Insert at Grid.Row="3") -->
+        <Grid Grid.Row="3" Margin="15,0,15,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Output:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <Border Grid.Column="1" BorderBrush="#3F3F46" BorderThickness="1" Background="#252526" Padding="5,0" Margin="0,0,10,0">
+                <TextBlock x:Name="TxtOutputDir" Text="Same as input directory" VerticalAlignment="Center" Foreground="#888888" TextTrimming="CharacterEllipsis"/>
+            </Border>
+            <Button x:Name="BtnBrowseOutput" Grid.Column="2" Content="Browse..." Width="70" Height="25" Click="BtnBrowseOutput_Click"/>
+            <Button x:Name="BtnResetOutput" Grid.Column="3" Content="Reset" Width="50" Height="25" Margin="5,0,0,0" Click="BtnResetOutput_Click" IsEnabled="False"/>
+        </Grid>
+        
         <!-- Conversion Settings -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="15,0,15,15">
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="15,0,15,15">
             <TextBlock Text="Target Format:" VerticalAlignment="Center" Margin="0,0,10,0"/>
             <ComboBox x:Name="CmbFormat" Width="100" SelectedIndex="0">
                 <ComboBoxItem Content="Png"/>
@@ -85,7 +112,7 @@
         </StackPanel>
 
         <!-- Action Bar -->
-        <Grid Grid.Row="4" Margin="15,0,15,15">
+        <Grid Grid.Row="5" Margin="15,0,15,15">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
