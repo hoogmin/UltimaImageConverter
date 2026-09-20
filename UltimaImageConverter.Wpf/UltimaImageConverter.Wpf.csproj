@@ -8,6 +8,8 @@
 		<UseWPF>true</UseWPF>
 		<!-- Sets the icon for the .exe file in Windows File Explorer -->
 		<ApplicationIcon>uic_icon.ico</ApplicationIcon>
+		<Authors>Javier Martinez</Authors>
+		<Product>UltimaImageConverter GUI</Product>
 	</PropertyGroup>
 
 	<ItemGroup>

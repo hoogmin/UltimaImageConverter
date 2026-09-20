@@ -14,3 +14,19 @@ for additions and I might get around to them.
 
 `uic` doesn't track you and all image conversion happens locally 100%
 on your machine.
+
+### Installation
+Windows has full GUI support while MacOS and Linux are CLI only. You can download a zip of everything in the releases
+section of this GitHub page. Then you simply extract using a tool like `7zip` or whatever your archival tool of choice is. You can launch the application straight from
+the extracted folder or move to a location in your `PATH`. From there just execute
+`uic help` or `uic-gui` for the GUI.
+
+Windows has full installer support, so simply download the installer and run it
+like you would any other program.
+
+On Linux and MacOS, you may need to navigate into the downloaded folder and run
+`chmod +x ./uic` to make the program executable if it isn't already.
+
+### Screenshots
+![GUI Screenshot](/gui.png)
+![CLI Screenshot](/cli.png)
