@@ -22,7 +22,7 @@ the extracted folder or move to a location in your `PATH`. From there just execu
 `uic help` or `uic-gui` for the GUI.
 
 Windows has full installer support, so simply download the installer and run it
-like you would any other program.
+like you would any other program. When you run it you may get a "Windows protected your PC" message. In which case click `More info -> run anyway`. On macOS, right click the file and select `Open`.
 
 On Linux and MacOS, you may need to navigate into the downloaded folder and run
 `chmod +x ./uic` to make the program executable if it isn't already.
